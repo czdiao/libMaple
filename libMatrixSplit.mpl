@@ -9,7 +9,7 @@
 #
 #
 #   Chenzhe
-#   Oct, 2016
+#   Jun, 2018
 #
 
 with(LinearAlgebra):
@@ -614,4 +614,27 @@ SplitConstDet_RealSym := proc(A)
     DD:= simplify(tmp.DD.hermConj(tmp)):
 
     return UU, DD:    
+end proc:
+
+
+###############################
+
+QuasiRotate := proc(t)
+    description "U = <<cosh | sinh>, <sinh | cosh>>";
+    # for either J = diag(1, -1) or J = diag(-1, 1)
+    # U.J.Transpose(U) = J
+    local U0;
+    U0 := <<t + 1/t | t - 1/t>, <t - 1/t | t + 1/t>>/2:
+    return U0:
+end proc:
+
+GetRotateT := proc(c1, c2)
+    description "Find param t for QuasiRotate(t)";
+    # input the coeff of the ldegree() or degree() term to be canceled
+    # |c_1| != |c_1|, otherwise cannot work
+
+    local t:
+    t := abs((c1 - c2)/(c1 + c2)):
+    t := sqrt(t):
+    return t:
 end proc:

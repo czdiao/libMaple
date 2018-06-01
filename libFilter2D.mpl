@@ -1,10 +1,11 @@
 ######################################################
 #
 #   Library related to 2D Filters
+#   With some functions for quincunx dilation.
 #
 #
 #   Chenzhe
-#   Oct, 2017
+#   Jun, 2018
 #
 
 

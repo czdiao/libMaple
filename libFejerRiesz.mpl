@@ -6,7 +6,7 @@
 #   This library relies on libLpoly.mpl, libMatrixSplit.mpl
 #
 #   Chenzhe
-#   Oct, 2016
+#   Jun, 2018
 #
 
 
@@ -144,6 +144,68 @@ SqrtComplexSym := proc(p)
 end proc:
 
 
+SqrtRealSym_param := proc(p)
+	description "Special case of F-R lemma, p=q*hc(q), where q has real symmetry, parameterized case";
+	# This proc only checks nothing, p can be parametrized.
+    #
+    #   Find the solution using formula.
+    #
+    #   Output 2 solutions for the cases p_N positive or negative.
+    #
+    # The output has sym factor 1 or z
+
+    local N, c, q1, q2, t, j, k, n, tmp:
+
+    t := table():
+    N:= degree(p, z):
+    if modp(N, 2)=0 then
+        # Output has real sym factor 1
+        n:= N/2:
+        t[n]:= 1:
+        for j from 1 by 1 to n do
+            t[n-j] := coeff(p, z, N-j)/coeff(p, z, N):
+            for k from (n-j+1) by 1 to (n-1) do
+                t[n-j] := t[n-j] - t[k]*t[2*n-j-k]:
+            od:
+
+            t[n-j] := t[n-j]/2:
+        od:
+
+        c:=sqrt(lcoeff(p, z)):  # p_N > 0
+        q1:= c * add(t[k]*(z^k+1/z^k), k=1..n):
+        t[0] := c*t[0]:
+        q1:= q1 + t[0]:
+
+        c:=sqrt(-lcoeff(p, z)): # p_N < 0
+        q2 := c * add(t[k]*(z^k-1/z^k), k=1..n):
+        
+    else
+        # Output has real sym factor 1/z
+        n:= floor(N/2):
+        t[n]:= 1:
+        for j from 1 by 1 to n do
+            t[n-j] := coeff(p, z, N-j)/coeff(p, z, N):
+            for k from (n-j+1) by 1 to (n-1) do
+                t[n-j] := t[n-j] - t[k]*t[2*n-j-k]:
+            od:
+
+            t[n-j] := t[n-j]/2:
+        od:
+
+        c:=sqrt(lcoeff(p, z)):  # p_N > 0
+        q1:= c * add(t[k] * (z^k + 1/z^k/z), k=0..n):
+
+        c:=sqrt(-lcoeff(p, z)):  # p_N < 0
+        q2:= c * add(t[k] * (z^k - 1/z^k/z), k=0..n):
+
+    end if:
+
+    return simplify(q1), simplify(q2):
+
+end proc:
+
+
+(*
 SqrtRealSym := proc(p)
 	description "Special case of F-R lemma, p=(+/-)q*hc(q), where q has real symmetry";
 	# This proc is symbolic, which means the coeffs of p has to be fractions, rather than floating point numbers.
@@ -223,7 +285,7 @@ SqrtRealSym := proc(p)
     return q:
 
 end proc:
-
+*)
 
 SqrtDaubechiesP0 := proc(P)
     description "Implementation of Algorithm 2.2.2";

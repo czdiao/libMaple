@@ -7,7 +7,7 @@
 #   This library relies on libLpoly.mpl
 #
 #   Chenzhe
-#   Oct, 2016
+#   Jun, 2018
 #
 
 with(LinearAlgebra):
@@ -20,10 +20,23 @@ PlotPolyZreal := proc(poly)
 description "Plot real part value of z-domain Polynomial poly in -Pi..Pi";
 ## poly should be in z-domain
 
-	local t, polyt:
+	local t, polyt, p1, p2, yreal, ymin, ymax, yeps, xiVal:
 	polyt := eval(simplify(poly), z = exp(-I*xi)):
-	plot([Re(polyt)], xi = -Pi..Pi);
+
+    xiVal := [seq((j*2*Pi/100)-Pi, j = 0..50 )]:
+    yreal := [seq( Re(eval(polyt, xi = xiVal[j])), j = 1..nops(xiVal) )]:
+    ymin := min(yreal):
+    ymax := max(yreal):
+    yeps := (ymax - ymin)/20:
+
+	#p1:= plot([Re(polyt)], xi = -Pi..Pi, axes = boxed, labels = [``, ``]):
+    #p2:= plot(0, x=-Pi..Pi, linestyle=dash, color="Blue", labels = [``, ``]):
+    p1:= plot([Re(polyt)], xi=-(Pi*1.01)..Pi, tickmarks = [5, 4], axes = boxed, color="Black", labels = [``, ``]):
+    p2:= plot(0, x=-(Pi*1.01)..Pi, y = -yeps..yeps, tickmarks = [5, default], linestyle=dash, color="Black", labels = [``, ``], axes = boxed):
+
+    display({p1, p2});
 end proc:
+
 
 
 PlotPolyZ := proc(poly)
@@ -35,14 +48,18 @@ description "Plot abs value of z-domain Polynomial poly in -Pi..Pi";
 	plot([abs(polyt)], xi = -Pi..Pi, color="Black");
 end proc:
 
-PlotPolyZn := proc(polylist, legendlist)
+
+PlotPolyZn := proc(polylist)
     description "Plot multiple z-domain Laurent Polynomials simultaneously":
     # input should be a list: [p1, p2, ..., pn]
+    # linestype in order of: solid, dot, dash, dashdot, longdash, spacedash, spacedot. 
+
 	local polyt, n, iter:
 
 	n := nops(polylist):
     polyt := eval(simplify(polylist), z=exp(-I*xi)):
-    plot(evalf(abs~(polyt)), xi=-Pi..Pi, legend = legendlist, linestyle=[seq(i, i=1..n)] );
+    #plot(evalf(abs~(polyt)), xi=-Pi..Pi, tickmarks = [spacing((1/2)*Pi), default], legend = legendlist, linestyle=[seq(i, i=1..n)], axes=boxed );
+    plot(evalf(abs~(polyt)), xi=-(Pi*1.01)..Pi, tickmarks = [5, default], linestyle=[seq(i, i=1..n)], axes=boxed, labels = [``, ``] );
 
 
 end proc:
@@ -119,16 +136,15 @@ PlotRootsZ_num := proc(poly)
 end proc:
 
 
-
-
 PlotPhi := proc(a, n)
     description "Plot scalar refinable function":
 
-    local xval, yval, iter, xmin, xmax, k:
+    local xval, yval, iter, xmin, xmax, k, aRound, ymin, ymax, yeps:
     yval:= 1:   # choose initial function to be delta in cascade algorithm
+    aRound := RoundingLpoly(a):
 
     for iter from 1 to n do
-        yval:= 2 * a * eval(yval, z=z^2):
+        yval:= 2 * aRound * eval(yval, z=z^2):
         yval:= collect(yval, z):
     od:
 
@@ -137,18 +153,28 @@ PlotPhi := proc(a, n)
     xval:= [seq( k/2^n, k=xmin..xmax )]:
 
     yval:=CoefficientVector(collect(yval/z^xmin, z), z):
-    plot(xval, yval);
+
+    xmin := floor(min(xval)):
+    xmax := ceil(max(xval)):
+    ymax := max(yval):
+    ymin := min(yval):
+    yeps := (ymax - ymin)/20:
+
+    plot(xval, yval, xmin..xmax, (ymin-yeps)..(ymax + yeps), axes=boxed, tickmarks=[default, 4], color="Black");
 
 end proc:
+
 
 PlotPsi := proc(a, b, n)
     description "Plot scalar wavelet function":
 
-    local xval, yval, iter, xmin, xmax, k:
-    yval:= b:   
+    local xval, yval, iter, xmin, xmax, k, aRound, bRound, ymin, ymax, yeps:
+    aRound := RoundingLpoly(a):
+    bRound := RoundingLpoly(b):
+    yval:= bRound:   
 
     for iter from 1 to (n-1) do
-        yval:= 2 * a * eval(yval, z=z^2):
+        yval:= 2 * aRound * eval(yval, z=z^2):
         yval:= collect(yval, z):
     od:
 
@@ -157,8 +183,133 @@ PlotPsi := proc(a, b, n)
     xval:= [seq( k/2^n, k=xmin..xmax )]:
 
     yval:=CoefficientVector(collect(yval/z^xmin, z), z):
-    plot(xval, yval);
+
+    xmin := floor(2*min(xval))/2:
+    xmax := ceil(2*max(xval))/2:
+    ymax := max(yval):
+    ymin := min(yval):
+    yeps := (ymax - ymin)/20:
+
+    plot(xval, yval, xmin..xmax, (ymin-yeps)..(ymax + yeps), axes=boxed, tickmarks=[default, 4], color="Black");
 end proc:
+
+PlotPhiShift := proc(a, u, n)
+    description "Plot linear combination of scalar refinable function":
+    # phi_0 is defined by lowpass a, plot phi(x) = sum_k u(k) phi_0(x-k)
+    # This is used when the integer shifts of phi is not stable.
+    # Special Case:
+    #       PlotPhi(a, n) = PlotPhiShift(a, 1, n)
+
+    local xval, yval, iter, xmin, xmax, k, aRound, ymax, ymin, yeps:
+    yval:= RoundingLpoly(u):   # choose initial function to be delta in cascade algorithm
+    aRound := RoundingLpoly(a):
+
+    for iter from 1 to n do
+        yval:= 2 * aRound * eval(yval, z=z^2):
+        yval:= collect(yval, z):
+    od:
+
+    xmin:= ldegree(yval, z):
+    xmax:= degree(yval, z):
+    xval:= [seq( k/2^n, k=xmin..xmax )]:
+
+    yval:=CoefficientVector(collect(yval/z^xmin, z), z):
+
+    xmin := floor(min(xval)):
+    xmax := ceil(max(xval)):
+    ymax := max(yval):
+    ymin := min(yval):
+    yeps := (ymax - ymin)/20:
+
+    plot(xval, yval, xmin..xmax,  (ymin-yeps)..(ymax + yeps),  axes=boxed, tickmarks=[default, 4], color="Black");
+end proc:
+
+
+PlotPsiShift := proc(a, u, b, n)
+    description "Plot scalar wavelet function":
+    # phi is defined by u*phi_0, see PlotPhiShift() above
+    # This is used when the integer shifts of phi is not stable.
+    # Special Case:
+    #       PlotPsi(a, b, n) = PlotPsiShift(a, 1, b, n)
+
+    local xval, yval, iter, xmin, xmax, k, aRound, bRound, ymax, ymin, yeps:
+    aRound := RoundingLpoly(a):
+    bRound := RoundingLpoly(b):
+    yval:= RoundingLpoly(bRound * u):
+
+    for iter from 1 to (n-1) do
+        yval:= 2 * aRound * eval(yval, z=z^2):
+        yval:= collect(yval, z):
+    od:
+
+    xmin:= ldegree(yval, z):
+    xmax:= degree(yval, z):
+    xval:= [seq( k/2^n, k=xmin..xmax )]:
+
+    yval:=CoefficientVector(collect(yval/z^xmin, z), z):
+
+    xmin := floor(2*min(xval))/2:
+    xmax := ceil(2*max(xval))/2:
+    ymax := max(yval):
+    ymin := min(yval):
+    yeps := (ymax - ymin)/20:
+
+    plot(xval, yval, xmin..xmax, (ymin-yeps)..(ymax + yeps), axes=boxed, tickmarks=[default, 4], color="Black");
+end proc:
+
+
+StemPlot := proc(a)
+    description "stem plot of a filter in Laurent Polynomial":
+
+    local ldeg, deg, j, xx, yy, ymin, ymax, meps:
+
+    ldeg := ldegree(a, z):
+    deg := degree(a, z):
+
+    xx := [seq(j, j=ldeg..deg)]:
+    yy := [seq(coeff(a, z, j), j=ldeg..deg)]:
+
+    ymin := min(min(yy), 0):
+    ymax := max(max(yy), 0):
+    meps := (ymax - ymin)/20:
+
+    #display( DynamicSystems:-DiscretePlot(xx, yy,style=stem), 
+    #    plot(0, x=(ldeg-1)..(deg+1), y=min(yy)-meps..max(yy)+meps, axes=boxed) );
+    display([plot(xx, yy, style=point, symbol=circle, axes=boxed),
+                plot(0, x=(ldeg-1)..(deg+1), y=ymin-meps..ymax+meps, axes=boxed, 
+                    tickmarks=[[seq(i, i=ldeg..deg)], default]),
+                plot([seq([[xx[i],yy[i]],[xx[i],0]],i=1..nops(xx))],colour=black)])
+
+end proc:
+
+
+PlotHermEigenVal := proc(A)
+    description "point plot of the eigenvalues of a Hermite matrix of Laurent polynomials":
+    # A is assumed to be Hermite, so the eigenvalues are real. Only plot the real part.
+    local dim, dim2, eiv, k, points, N, xi, p1, p2, ymin, ymax, meps:
+
+    N := 200:
+    xi := [seq((j*2*Pi/N)-Pi, j = 0..N )]:
+    dim, dim2 := Dimension(A):
+
+    eiv := [seq(Eigenvalues(evalf(eval(A, z = cos(xi[j])+I*sin(xi[j])))), j = 1..nops(xi))]:
+
+    points := {}:
+    for k from 1 to dim do
+        points := points union {seq([xi[j], Re(eiv[j][k])], j = 1..nops(xi))}:
+    end do;
+
+    ymax := max(max([seq(points[j][2], j = 1..nops(points))]), 0):
+    ymin := min(min([seq(points[j][2], j = 1..nops(points))]), 0):
+    meps := (ymax - ymin)/20:
+
+    p1:= pointplot(points, symbol = point, axes=boxed):
+    p2:= plot(0, x=-Pi..Pi, y=ymin-meps..ymax+meps, linestyle=dash, tickmarks = [5, default], color="Blue", labels = [``, ``]):
+
+    display({p1, p2}):
+
+end proc:
+
 
 
 #############
@@ -169,3 +320,13 @@ description "Plot a 2d mask in frequency domain, a is a polynomial of z[1] and z
 	plot3d([abs(polyt)], xi1 = -Pi..Pi, xi2= -Pi..Pi);
 end proc:
 
+
+ExportFunctionPlot := proc(p::evaln, pname)
+    local name, place, opts:
+    name := cat(pname, ".eps"):
+    opts := `landscape,width=768,height=768,noborder,axes=boxed,color="Black"`:
+    plotsetup('eps', 'plotoutput'=name, 'plotoptions'=opts):
+    print( plots:-display( eval(p), 'axesfont' = [ TIMES, 30 ],
+                        'labelfont' = [ TIMES, ROMAN, 30] ) ):
+    plotsetup(default):
+end proc:

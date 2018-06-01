@@ -6,7 +6,7 @@
 #   libraries will depend on the functions here.
 #
 #   Chenzhe
-#   Oct, 2016
+#   Jun, 2018
 #
 
 
@@ -40,7 +40,7 @@ hermconj := proc(f)
     #hc(f):		# commented by Chenzhe, sometimes wrong if not calling collect(f,z) first
     #eval(f, {z = 1/z, I = -I}):	# Chenzhe
     conjugate( eval(f, z = 1/conjugate(z)) ):
-end:
+end proc:
 
 
 
@@ -60,7 +60,7 @@ hermConj := proc(A)
 	B := hermconj(A):
     end if:
     B:
-end:
+end proc:
 
 
 Lpoly2poly:= proc(f)
@@ -287,7 +287,7 @@ NormRealonT := proc(f)
 	
 	if modp(lenLpoly(f),2)<>0 or (not isComplexSym(f)) then
 		error("Cannot be normalized to real valued function on T!"):
-	end:	
+	end if:
 	
     # p is real on T <==> complex sym factor SS=1
     p:= NormComplexSym(f):
@@ -549,6 +549,63 @@ SmoothExp2 := proc(a)
     return sm:
 
 end proc:
+
+Lpoly2List := proc(a)
+    description "Print the Lpoly a as a list, print its fsupp":
+    local aList, fs, deg, ldeg, j:
+
+    deg := degree(a, z):
+    ldeg := ldegree(a, z):
+    aList := []:
+    fs := [ldeg, deg]:
+
+    for j from ldeg to deg do
+        aList := [op(aList), coeff(a, z, j)]:
+    end do;
+
+    return aList, fs:
+end proc:
+
+
+CheckPR := proc(fb, Sig)
+    description "Check PR of 1D dilation 2 filter bank":
+    # fb is a column vector, Sig is the diagonal signature matrix with +/- 1
+    # if PR holds, should return 2x2 identity matrix
+    local FB:
+
+    FB := <fb| eval(fb, z=-z)>:
+
+    return simplify~(hermConj(FB).Sig.FB):
+end proc:
+
+
+LpolySym2Poly := proc(Lpoly)
+    description "Given a Lpoly with real sym, and sym center is 0, write it as a poly of zeta = (z+1/z)";
+    local Poly, c, deg, k, Lpoly1:
+
+    #evaln(z):
+    deg := degree(Lpoly, z):
+    Lpoly1 := Lpoly:
+    Poly := 0:
+
+    for k from deg by (-1) to 1 do
+        c:= coeff(Lpoly1, z, k):
+        Poly := Poly + c * zeta^k:
+        Lpoly1 := Lpoly1 - c * (z+1/z)^k:
+    end do;
+
+    Poly := Poly + simplify(Lpoly1):
+
+    if evalb(simplify(eval(Poly, zeta = (z+1/z)) - Lpoly) <> 0 ) then
+        error("Error in LpolySym2Poly, no real sym?");
+    end if;
+
+    return Poly:
+end proc:
+
+
+
+##################### for high dimension, maybe move to somewhere else?
 
 getAllTerms := proc(Lpoly, vlist)
     description "Get all terms in a Lpoly as a list, works for multivariate case":
