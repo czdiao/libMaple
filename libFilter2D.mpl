@@ -1,7 +1,7 @@
 ######################################################
 #
 #   Library related to 2D Filters
-#   With some functions for quincunx dilation.
+#   Also includes some generic functions used for different dilations.
 #
 #
 #   Chenzhe
@@ -14,6 +14,32 @@ with(ArrayTools):
 with(combinat):
 with(PolynomialTools):
 
+VMnD := proc(u, zlist)
+    description "Vanishing moments for multivariate Lpoly.":
+
+    local ld, utmp, n, j, tmp:
+
+    n := nops(zlist):
+    ld := Vector(n):
+    utmp := u:
+    for j from 1 to n do
+        ld[j] := ldegree(u, zlist[j]):
+        utmp := utmp / zlist[j]^ld[j]:
+    end do;
+    utmp := expand(utmp):
+
+    tmp := [seq(zlist[j] = zlist[j]+1, j = 1..nops(zlist))]:
+    utmp := eval(utmp, tmp):
+    utmp := expand(utmp):
+
+    return ldegree(utmp):
+end proc:
+
+VM2D := proc(u)
+    return VMnD(u, [z[1], z[2]]):
+end proc:
+
+
 fsupp2D := proc(a)
     description "fsupp of 2D Lpoly":
 
@@ -25,23 +51,27 @@ fsupp2D := proc(a)
     return fs1, fs2:
 end proc:
 
-CosetShift := proc(a)
-    description "Shift coset with Quincunx Dilation":
-    return eval(a, {z[1]=-z[1], z[2]=-z[2]}):
-end proc:
-
-# currently only works for real input
 hc2D := proc(a)
     description "Hermitian Conjugate of 2D filter":
     # only works for real case now.
     
-    return eval(a, {z[1]=1/z[1], z[2]=1/z[2]}):
+    #return eval( a, {z[1]=1/z[1], z[2]=1/z[2], I = -I}):
+    return conjugate( eval(a, [z[1] = 1/conjugate(z[1]), z[2] = 1/conjugate(z[2])]) ):
+end proc:
+
+hcMatrix2D := proc(A)
+    description "Hermitian Conjugate of Matrix A":
+    return Transpose(hc2D(A)):
 end proc:
 
 Lpoly2Matrix := proc(f)
     description "Input a 2D filter in z-domain, and output its matrix form, help to debug";
 
     local a, ld1, ld2, d1, d2, M, fs1, fs2, t, di1, di2, c, m, n, di1m, di2m;
+
+    if evalb(f=0) then
+        return Matrix(1,1,0), [-infinity, infinity], [-infinity, infinity]:
+    end if;
 
     a := expand(f):
 
@@ -85,43 +115,24 @@ Matrix2Lpoly := proc(M, fs1, fs2)
     return a;
 end proc:
 
-# currently only works for real input
-getM_QCX := proc(a)
-    description "Get matrix M for Quincunx Dilation":
+############ Generic procedures ##################
 
-    local a1, v, v1:
+# generic downsample with matrix M0
+downsampleM := proc(a0, M0)
+    description "Downsample of filter a0 with dilation matrix M0":
+    # need to make sure all terms are in 0-coset first. Otherwise would get terms with fractional power.
+    # e.g. for quincunx dilation, call 
+    #   t:= getAllTerms(a0): t:=select(isCoset0_QCX, t):  a0:= add(t[j], j=1..nops(t)):
+    # before this function.
 
-    a1:= eval(a, {z[1] = -z[1], z[2] = -z[2]}):
-    v := <a, a1>:
-    v1 := Transpose(eval(v, {z[1]=1/z[1], z[2]=1/z[2]})):
+    local a, t, de1, de2, de, c, a0new, Minv:
 
-    return v.v1;
-end proc:
-
-
-getCoset_QCX := proc(a)
-    description "Get the coset sequenc of a given 2D Lpoly, with Quincunx Dilation matrix":
-    # Dilation Matrix M = [1, 1; 1, -1]
-    # gamma0 = [0, 0], gamma1 = [1, 0]
-
-    local an, a0, a1, a0new, a1new, M, Minv, de, de1, de2, c, t:
-    # find 2 coset sequences
-    an := eval(a, {z[1]=-z[1], z[2]=-z[2]}):
-    a0 := simplify(a+an)/2:
-    a0 := expand(a0):
-    a1 := (a - a0)/z[1]:
-    a1 := expand(a1):
-
-    a0new := 0:
-    a1new := 0:
-
-    # Quincunx Dilation
-    M := Matrix([[1, 1], [1, -1]]):
-    Minv := MatrixInverse(M):
-
+    Minv := MatrixInverse(M0):
     # downsample
-    if type(a0, `+`) then
-        for t in [op(a0)] do
+    a := expand(a0):
+    a0new := 0:
+    if type(a, `+`) then
+        for t in [op(a)] do
             de1 := degree(t, z[1]):
             de2 := degree(t, z[2]):
             de := <de1, de2>:
@@ -131,70 +142,23 @@ getCoset_QCX := proc(a)
             a0new := a0new + c * z[1]^de[1] * z[2]^de[2]:
         od:
     else
-        de1 := degree(a0, z[1]):
-        de2 := degree(a0, z[2]):
+        de1 := degree(a, z[1]):
+        de2 := degree(a, z[2]):
         de := <de1, de2>:
         de := Minv.de:
-        c := coeff(coeff(a0, z[1], de1), z[2], de2):
+        c := coeff(coeff(a, z[1], de1), z[2], de2):
         a0new := a0new + c * z[1]^de[1] * z[2]^de[2]:
     end if;
-    
-    if type(a1, `+`) then
-        for t in [op(a1)] do
-            de1 := degree(t, z[1]):
-            de2 := degree(t, z[2]):
-            de := <de1, de2>:
-            de := Minv.de:
-            c := coeff(coeff(t, z[1], de1), z[2], de2):
 
-            a1new := a1new + c * z[1]^de[1] * z[2]^de[2]:
-        od:
-    else
-        de1 := degree(a1, z[1]):
-        de2 := degree(a1, z[2]):
-        de := <de1, de2>:
-        de := Minv.de:
-        c := coeff(coeff(a1, z[1], de1), z[2], de2):
-        a1new := a1new + c * z[1]^de[1] * z[2]^de[2]:
-    end if;
-
-    return a0new, a1new:
-
+    return a0new:
 end proc:
 
+# generic upsample with matrix M0
+upsampleM := proc(a0, M0)
+    description "Upsample a 2D filter a0 with dilation matrix M0":
 
-# currently only works for real input
-getN_QCX := proc(a)
-    description "Get matrix N for Quincunx Dilation":
-    # gamma0 = [0, 0], gamma1 = [1,0]
-    # dilation matrix M = [1, 1; 1, -1]
-
-    local v1, v2, a0, a1:
-
-    a0, a1 := getCoset_QCX(a):
-    v1 := <a0, a1>:
-    v2 := Transpose(eval(v1, {z[1]=1/z[1], z[2]=1/z[2]})):
-    return v1.v2;
-end proc:
-
-getFilter_QCX := proc(a0, a1)
-    description "Get back to filter from coset sequences.":
-
-    local a, M:
+    local a, ld1, d1, ld2, d2, de, di1, di2, c:
     a := 0:
-
-    a := a + upsample_QCX(a0):
-    a := a + upsample_QCX(a1)*z[1]:
-
-    return simplify(a):
-end proc:
-
-upsample_QCX := proc(a0)
-    description "Upsample 2D filter a with Quincunx Dilation Matrix":
-
-    local a, M, ld1, d1, ld2, d2, de, di1, di2, c:
-    a := 0:
-    M := Matrix([[1, 1], [1, -1]]):
 
     ld1 := ldegree(a0, z[1]):
     d1 := degree(a0, z[1]):
@@ -204,11 +168,117 @@ upsample_QCX := proc(a0)
         for di2 from ld2 to d2 do
             c := coeff(coeff(a0, z[1], di1), z[2], di2):
             de := <di1, di2>:
-            de := M.de:
+            de := M0.de:
             a := a + c * z[1]^de[1]*z[2]^de[2]:
         end do:
     end do:
 
     return a:
     
+end proc:
+
+# Check whether a matrix is identically zero
+is0Matrix := proc(A)
+    local Atmp, j, k, m, n:
+    m := RowDimension(A):
+    n := ColumnDimension(A):
+    for j from 1 to m do
+        for k from 1 to n do
+            if evalb(m=1) then  # row vector
+                Atmp := simplify(A[k]):
+            elif evalb(n=1) then  # col vector
+                Atmp := simplify(A[j]):
+            else   # matrix
+                Atmp := simplify(A[j,k]):
+            end if;
+
+            if not evalb(Atmp = 0) then
+                return false:
+            end if;
+        end do;
+    end do;
+
+    return true:
+end proc:
+
+######## only for debugging, not used
+# "Compute U_1uv as in eq (3.17)"
+getU1uv := proc(a0, m)
+    description "Compute U_1uv as in eq (3.17)":
+    # output Uuv[u, v] with  range: v <= u
+    # Uuv[u, v] with nonzero:
+    #   u = 0..m, v = 0;
+    #   u = m, v = 1..m:
+
+    local Uuv, mu0, u, v, U0, d1, d2, tmp:
+
+    U0 := DividedDiffSp(a0, 2*m):
+    Uuv := table():
+    for mu0 from 0 to m do
+        u := mu0:
+        v := 0:
+        Uuv[u, v] := U0[mu0, 2*m-mu0] * (-z[1])^u * (-z[2])^(m-u):
+    end do;
+    for mu0 from m+1 to 2*m do
+        u := m:
+        v := mu0 - u:
+        Uuv[u, v] := U0[mu0, 2*m-mu0] * (-z[1])^u * (-z[2])^(m-u):
+    end do;
+
+    # add 0 to other v <= u
+    for u from 1 to (m-1) do
+        for v from 1 to u do
+            Uuv[u, v] := 0:
+        end do;
+    end do;
+
+    # verify
+    tmp := 0:
+    for u from 0 to m do
+        for v from 0 to u do
+            d1 := (z[1]-1)^u * (z[2]-1)^(m-u):
+            d1 := hc2D(d1):
+            d2 := (z[1]-1)^v * (z[2]-1)^(m-v):
+            tmp := tmp + d1*d2*Uuv[u,v]:
+        end do;
+    end do;
+    tmp := simplify(tmp-a0):
+    if not evalb(tmp=0) then
+        error("Error in getU1uv!"):
+    end if;
+
+    return eval(Uuv):
+end proc:
+
+# "Compute U_2uv as in eq (3.17)"
+getU2uv := proc(a, m)
+    description "Compute U_2uv as in eq (3.17)":
+
+    local a1, u2uv, Usp, u, v, tmp, tmp1, tmp2:
+
+    u2uv:= table():
+    a1 := CosetShift_QCX(a):
+    a1 := hc2D(a1):
+    Usp := DividedDiffSp(a1, m):
+    for u from 0 to m do
+        for v from 0 to m do
+            tmp := hcMatrix2D(CosetShift_QCX(Usp[v, m-v])):
+            u2uv[u,v] := -(-z[1])^u * (-z[2])^(m-u) /(z[1])^v/(z[2])^(m-v) * Usp[u, m-u] * tmp:
+        end do;
+    end do;
+
+    # verify
+    tmp1 := 0:
+    for u from 0 to m do
+        for v from 0 to m do
+            tmp2 := (z[1]-1)^u * (z[2]-1)^(m-u):
+            tmp2 := hc2D(tmp2) * CosetShift_QCX((z[1]-1)^v * (z[2]-1)^(m-v)):
+            tmp1 := tmp1 +  tmp2 * u2uv[u,v]:
+        end do;
+    end do;
+    tmp1 := simplify(tmp1 + hc2D(a)*CosetShift_QCX(a) ):
+    if not evalb(tmp1 = 0) then
+        error("getU2uv not correct!"):
+    end if;
+    return eval(u2uv):
 end proc:

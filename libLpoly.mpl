@@ -59,7 +59,7 @@ hermConj := proc(A)
     else ### assume total_elements == 1, scalar case
 	B := hermconj(A):
     end if:
-    B:
+    return B:
 end proc:
 
 
@@ -425,7 +425,7 @@ LSmithForm:= proc(M)
     Cz[`-`]:=`-`: 
     Cz[`*`]:=`*`: 
     Cz[`=`]:= `=`:
-    Cz[Quo] := proc(a,b,r) if nargs=3 then quo(a,b,z,r) else quo(a,b,z) fi end:
+    Cz[Quo] := proc(a,b,r) if nargs=3 then quo(a,b,z,r) else quo(a,b,z) fi end proc:
     Cz[Rem] := (a,b,q) -> rem(a,b,z,q):
     Cz[EuclideanNorm] := a -> degree(a,z):
     Cz[Gcdex] := (a,b,s,t)->gcdex(a,b,z,s,t):

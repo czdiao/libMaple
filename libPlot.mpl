@@ -310,9 +310,8 @@ PlotHermEigenVal := proc(A)
 
 end proc:
 
-
-
-#############
+############# 2D wavelet/mask plot ##############
+# 2-dimensional frequency plot
 PlotPolyZD2 := proc(a)
 description "Plot a 2d mask in frequency domain, a is a polynomial of z[1] and z[2]";
 	local xi1, xi2, polyt:
@@ -320,7 +319,149 @@ description "Plot a 2d mask in frequency domain, a is a polynomial of z[1] and z
 	plot3d([abs(polyt)], xi1 = -Pi..Pi, xi2= -Pi..Pi);
 end proc:
 
+PlotPolyZD2real := proc(a)
+description "Plot a 2d mask in frequency domain, a is a polynomial of z[1] and z[2]";
+	local xi1, xi2, polyt:
+	polyt := eval(simplify(a), {z[1] = exp(-I*xi1), z[2] = exp(-I*xi2)}):
+	plot3d([Re(polyt)], xi1 = -Pi..Pi, xi2= -Pi..Pi);
+end proc:
 
+# General dilation matrix
+PlotPhi2D := proc(a, MM, n)
+    description "Plot 2D refinable function with general dilation matrix MM":
+
+    local xval, yval, iter, k1, k2, aRound, Minv, dM, X1, X2, Y, MinvN, ld1, d1, ld2, d2, mm, nn, di1, di2, c, di1m, di2m, x1, x2, xvec:
+    Minv := MatrixInverse(MM):
+    dM := Determinant(MM):
+    MinvN := Minv^n:
+    yval:= 1:   # choose initial function to be delta in cascade algorithm
+    aRound := a: #RoundingLpoly(a):
+
+    for iter from 1 to n do
+        yval:= dM * aRound * upsampleM(yval, MM):
+        yval:= collect(yval, [z[1], z[2]], distributed):
+    od:
+
+    # find the point coords, put into 3 matrices (X1, X2, Y)
+    # notice that the matrix Y start from bottom left corner
+    # horizontal is X1 direction (z[1])
+    # vertical is X2 direction (z[2])
+    ld1 := ldegree(yval, z[1]):
+    d1 := degree(yval, z[1]):
+    ld2 := ldegree(yval, z[2]):
+    d2 := degree(yval, z[2]):
+
+    mm := d1 - ld1 +1:
+    nn := d2 - ld2 +1:
+    X1 := Matrix(nn, mm):
+    X2 := Matrix(nn, mm):
+    Y  := Matrix(nn, mm):
+
+    for di1 from ld1 to d1 do
+        for di2 from ld2 to d2 do
+            c := coeff(coeff(yval, z[1], di1), z[2], di2):
+	        di1m := di1 - ld1 +1:
+	        di2m := di2 - ld2 +1:
+	        Y[nn-di2m+1, di1m] := c:
+            xvec := MinvN.<di1, di2>:
+            X1[nn-di2m+1, di1m] := xvec[1]:
+            X2[nn-di2m+1, di1m] := xvec[2]:
+        end do:
+    end do:
+
+    return X1, X2, Y:
+    #plot(xval, yval, xmin..xmax, axes=boxed);
+
+end proc:
+
+PlotPsi2D := proc(a, b, MM, n)
+    description "Plot 2D refinable function with general dilation matrix MM":
+
+    local xval, yval, iter, k1, k2, aRound, Minv, dM, X1, X2, Y, MinvN, ld1, d1, ld2, d2, mm, nn, di1, di2, c, di1m, di2m, x1, x2, xvec:
+    Minv := MatrixInverse(MM):
+    dM := Determinant(MM):
+
+    MinvN := Minv^n:
+    yval:= b:   # choose initial function to be delta in cascade algorithm
+    aRound := a: #RoundingLpoly(a):
+
+    for iter from 1 to n do
+        yval:= dM * aRound * upsampleM(yval, MM):
+        yval:= collect(yval, [z[1], z[2]], distributed):
+    od:
+
+    # find the point coords, put into 3 matrices (X1, X2, Y)
+    # notice that the matrix Y start from bottom left corner
+    # horizontal is X1 direction (z[1])
+    # vertical is X2 direction (z[2])
+    ld1 := ldegree(yval, z[1]):
+    d1 := degree(yval, z[1]):
+    ld2 := ldegree(yval, z[2]):
+    d2 := degree(yval, z[2]):
+
+    mm := d1 - ld1 +1:
+    nn := d2 - ld2 +1:
+    X1 := Matrix(nn, mm):
+    X2 := Matrix(nn, mm):
+    Y  := Matrix(nn, mm):
+
+    for di1 from ld1 to d1 do
+        for di2 from ld2 to d2 do
+            c := coeff(coeff(yval, z[1], di1), z[2], di2):
+	        di1m := di1 - ld1 +1:
+	        di2m := di2 - ld2 +1:
+	        Y[nn-di2m+1, di1m] := c:
+            xvec := MinvN.<di1, di2>:
+            X1[nn-di2m+1, di1m] := xvec[1]:
+            X2[nn-di2m+1, di1m] := xvec[2]:
+        end do:
+    end do:
+
+    return X1, X2, Y:
+    #plot(xval, yval, xmin..xmax, axes=boxed);
+
+end proc:
+
+PlotPhi2D_QCX := proc(a, n)
+    description "Plot refinable function with quincunx dilation":
+    local MM, X1, X2, Y:
+    MM := Matrix([[1, 1], [1, -1]]):
+
+    X1, X2, Y := PlotPhi2D(a, MM, n):
+    return X1, X2, Y:
+end proc:
+
+PlotPsi2D_QCX := proc(a, b, n)
+    description "Plot wavelet function with quincunx dilation":
+    local MM, X1, X2, Y:
+    MM := Matrix([[1, 1], [1, -1]]):
+
+    X1, X2, Y := PlotPsi2D(a, b, MM, n):
+    return X1, X2, Y:
+end proc:
+
+PlotPhi2D_I2 := proc(a, n)
+    description "Plot refinable function with 2I_2 dilation":
+    local MM, X1, X2, Y:
+    MM := Matrix([[2, 0], [0, 2]]):
+
+    X1, X2, Y := PlotPhi2D(a, MM, n):
+    return X1, X2, Y:
+end proc:
+
+
+PlotPsi2D_I2 := proc(a, b, n)
+    description "Plot wavelet function with 2I_2 dilation":
+    local MM, X1, X2, Y:
+    MM := Matrix([[2, 0], [0, 2]]):
+
+    X1, X2, Y := PlotPsi2D(a, b, MM, n):
+    return X1, X2, Y:
+end proc:
+
+
+
+############# Export function ##################
 ExportFunctionPlot := proc(p::evaln, pname)
     local name, place, opts:
     name := cat(pname, ".eps"):
