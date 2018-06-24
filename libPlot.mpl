@@ -330,7 +330,7 @@ end proc:
 PlotPhi2D := proc(a, MM, n)
     description "Plot 2D refinable function with general dilation matrix MM":
 
-    local xval, yval, iter, k1, k2, aRound, Minv, dM, X1, X2, Y, MinvN, ld1, d1, ld2, d2, mm, nn, di1, di2, c, di1m, di2m, x1, x2, xvec:
+    local xval, yval, iter, k1, k2, aRound, Minv, dM, X1, X2, Y, MinvN, ld1, d1, ld2, d2, mm, nn, di1, di2, c0, c, di1m, di2m, x1, x2, xvec:
     Minv := MatrixInverse(MM):
     dM := Determinant(MM):
     MinvN := Minv^n:
@@ -358,8 +358,9 @@ PlotPhi2D := proc(a, MM, n)
     Y  := Matrix(nn, mm):
 
     for di1 from ld1 to d1 do
+        c0 := coeff(yval, z[1], di1):
         for di2 from ld2 to d2 do
-            c := coeff(coeff(yval, z[1], di1), z[2], di2):
+            c := coeff(c0, z[2], di2):
 	        di1m := di1 - ld1 +1:
 	        di2m := di2 - ld2 +1:
 	        Y[nn-di2m+1, di1m] := c:
@@ -377,7 +378,7 @@ end proc:
 PlotPsi2D := proc(a, b, MM, n)
     description "Plot 2D refinable function with general dilation matrix MM":
 
-    local xval, yval, iter, k1, k2, aRound, Minv, dM, X1, X2, Y, MinvN, ld1, d1, ld2, d2, mm, nn, di1, di2, c, di1m, di2m, x1, x2, xvec:
+    local xval, yval, iter, k1, k2, aRound, Minv, dM, X1, X2, Y, MinvN, ld1, d1, ld2, d2, mm, nn, di1, di2, c0, c, di1m, di2m, x1, x2, xvec:
     Minv := MatrixInverse(MM):
     dM := Determinant(MM):
 
@@ -406,8 +407,9 @@ PlotPsi2D := proc(a, b, MM, n)
     Y  := Matrix(nn, mm):
 
     for di1 from ld1 to d1 do
+        c0 := coeff(yval, z[1], di1):
         for di2 from ld2 to d2 do
-            c := coeff(coeff(yval, z[1], di1), z[2], di2):
+            c := coeff(c0, z[2], di2):
 	        di1m := di1 - ld1 +1:
 	        di2m := di2 - ld2 +1:
 	        Y[nn-di2m+1, di1m] := c:
