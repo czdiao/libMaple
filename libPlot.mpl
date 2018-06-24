@@ -459,6 +459,24 @@ PlotPsi2D_I2 := proc(a, b, n)
     return X1, X2, Y:
 end proc:
 
+# This function is used after PlotPhi2D() and PlotPsi2D()
+# e.g.: 
+#   X1, X2, Y := PlotPhi2D_QCX(a, 6): PlotMesh3D(X1, X2, Y)
+PlotMesh3D := proc(X1, X2, Y)
+    description "Plot Y(X1, X2) in 3D":
+    # plot function: Y(X1, X2) in 3D
+    # X1, X2, Y are matrices of the same dimensions.
+    # For each position (i,j), X1[i,j] and X2[i,j] saves the x-y coord mesh
+    # Y[i,j] is the function value
+
+    sz1, sz2 := Dimension(X1):
+    fm := Array(1..sz1, 1..sz2, 1..3, datatype = float[8]):
+    fm[1..sz1, 1..sz2, 1] := evalf(X1):
+    fm[1..sz1, 1..sz2, 2] := evalf(X2):
+    fm[1..sz1, 1..sz2, 3] := evalf(Y):
+    PLOT3D(MESH(fm))
+
+end proc:
 
 
 ############# Export function ##################
