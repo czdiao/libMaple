@@ -468,6 +468,7 @@ PlotMesh3D := proc(X1, X2, Y)
     # X1, X2, Y are matrices of the same dimensions.
     # For each position (i,j), X1[i,j] and X2[i,j] saves the x-y coord mesh
     # Y[i,j] is the function value
+    local sz1, sz2, fm:
 
     sz1, sz2 := Dimension(X1):
     fm := Array(1..sz1, 1..sz2, 1..3, datatype = float[8]):
